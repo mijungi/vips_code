@@ -10,7 +10,7 @@ For BLR experiments, I wrote code in python. The stroke dataset isn't publically
 For SBN experiments, I used matlab code from https://github.com/zhegan27/dsbn_aistats2015, and added a few lines to add noise to the expected sufficient statistics. Due to the size of the dataset, I didn't include the dataset here, but you can download it from https://drive.google.com/drive/u/0/folders/0B1HR6m3IZSO_SW1jS1ZtRXlpakU.
 Once you download the dataset and put it in your working directory, run mnist_sbn_private.m to test our VIPS code for SBN. 
 
-If you find any errors, concerns, questions, or ways to improve, please let me know.
+If you find any errors, concerns, questions, or ways to improve, please let me know at mijungi.p@gmail.com
 
 Have a wonderful day!
 
