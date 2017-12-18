@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Mijung added lines at 77: """ Need to do some pre-processing such that each document has less than maximum length N """
+
+
 import sys, urllib2, re, string, time, threading
 # import numpy as n
 import random
@@ -36,31 +39,9 @@ def get_random_wikipedia_article():
             req = urllib2.Request('http://en.wikipedia.org/wiki/Special:Random', None, { 'User-Agent' : 'x'})
             f = urllib2.urlopen(req)
             line = f.read()
-            # print line
-            start = '<title>'
-            end = ' - Wikipedia, the free encyclopedia</title>\n'
-            # print((line.split(start))[1].split(end)[0])
-            # result = (line.split(start))[1].split(end)[0]
 
             result = re.search(r'<title>(.*) - Wikipedia, the free encyclopedia</title>\n', line)
             articletitle = result.group(1)
-
-            # while not articletitle:
-            #     line = f.readline()
-            #     print line
-            #     start = '<title>'
-            #     end = '- Wikipedia, the free encyclopedia</title>\n'
-            #     # print((line.split(start))[1].split(end)[0])
-            #     result = (line.split(start))[1].split(end)[0]
-            #     articletitle = result
-            #
-            #     result = re.search(r'title="Edit this page" href="/w/index.php\?title=(.*)\&amp;action=edit" /\>', line)
-            #
-            #     if (result):
-            #         articletitle = result.group(1)
-            #         break
-            #     elif (len(line) < 1):
-            #         sys.exit(1)
 
             req = urllib2.Request('http://en.wikipedia.org/w/index.php?title=Special:Export/%s&action=submit' \
                                       % (articletitle),
@@ -68,8 +49,8 @@ def get_random_wikipedia_article():
             f = urllib2.urlopen(req)
             all = f.read()
         except (urllib2.HTTPError, urllib2.URLError):
-            # print 'oops. there was a failure downloading %s. retrying...' \
-            #     % articletitle
+            print 'oops. there was a failure downloading %s. retrying...' \
+                % articletitle
             failed = True
             continue
         # print 'downloaded %s. parsing...' % articletitle
@@ -91,14 +72,12 @@ def get_random_wikipedia_article():
             all = re.sub(r'\&lt;.*?&gt;', '', all)
         except:
             # Something went wrong, try again. (This is bad coding practice.)
-            # print 'oops. there was a failure parsing %s. retrying...' \
-            #     % articletitle
+            print 'oops. there was a failure parsing %s. retrying...' \
+                % articletitle
             failed = True
             continue
 
         """ Need to do some pre-processing such that each document has less than maximum length N """
-        # maxLen = 500
-        # maxLen = 1000
         maxLen = 10000
         if len(all)>maxLen:
             # print ('word count is above %s' % maxLen)
