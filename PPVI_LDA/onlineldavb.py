@@ -216,7 +216,8 @@ class OnlineLDA:
                 if self.mech==0: # mech ==0, Gaussian
                     delta_iter = self.budget[1]
                     c2 = 2*n.log(1.25/delta_iter)
-                    sensitivity = maxLen/float(self._D)
+                    #sensitivity = maxLen/float(self._D)
+		    sensitivity = maxLen/float(batchD)
                     nsv = c2*(sensitivity**2)/(epsilon**2)
                     noise = n.random.normal(0,n.sqrt(nsv),sstats.shape)
 
