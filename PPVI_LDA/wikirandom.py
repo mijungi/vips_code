@@ -15,8 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Mijung added lines at 77: """ Need to do some pre-processing such that each document has less than maximum length N """
 
+""" mijung's comments """
+# (1) I added a few lines starting from line 83: """ Need to do some pre-processing such that each document has less than maximum length N """
+# (2) You might need to modify get_random_wikipedia_article, depending on how wikipedia forms their articles!
+#     It seems like the article formulations change over time. (I also had to change it when I download wiki pages in 2016)
 
 import sys, urllib2, re, string, time, threading
 # import numpy as n

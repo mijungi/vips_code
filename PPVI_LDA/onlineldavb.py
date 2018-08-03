@@ -218,7 +218,7 @@ class OnlineLDA:
                     c2 = 2*n.log(1.25/delta_iter)
                     sensitivity = maxLen/float(self._D)
                     nsv = c2*(sensitivity**2)/(epsilon**2)
-                    noise = n.random.normal(0,nsv,sstats.shape)
+                    noise = n.random.normal(0,n.sqrt(nsv),sstats.shape)
 
                 else: # mech == 1, Laplace
                     laplace_b = maxLen/float(self._D*epsilon)

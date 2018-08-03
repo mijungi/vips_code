@@ -103,6 +103,9 @@ def f_1(x, total_eps, which_comp, J, nu):
         return (total_eps - 0.5*J*eps_amp*(np.exp(eps_amp)-1))**2
 
 
+
+
+
 # total_eps = 1
 # # which_comp = 2
 #

@@ -22,15 +22,16 @@ Mijung's comment on modification:
 """ Mijung edited Matt's online LDA code for private Batch variational inference for LDA, Aug 11, 2016 """
 
 import cPickle, string, numpy, getopt, sys, random, time, re, pprint
-
+import numpy as np
 import onlineldavb
-import cal_amp_eps
+# import cal_amp_eps
 from scipy.optimize import minimize_scalar
 import wikirandom
 import os
+import calculate_privacy_burned as cal_pri
 
-#Data_PATH = "/".join([os.getenv("HOME"), "LDA_data/"])
-Data_PATH = "/datastore/mijung/LDA_data/"
+Data_PATH = "/".join([os.getenv("HOME"), "LDA_data/"])
+Results_PATH = "/".join([os.getenv("HOME"), "LDA_results2/"])
 
 # numpy.random.seed(12345)
 
@@ -49,9 +50,9 @@ def main():
     documentstoanalyze = int(sys.argv[2])
     batchsize = int(sys.argv[3])
     priv = int(sys.argv[4]) # 1 is private version, 0 is nonprivate version
-    epsilon = float(sys.argv[5]) # total privacy budget
-    comp = int(sys.argv[6]) # 0 conventional, 1 advanced, 2 CDP
-    mech = int(sys.argv[7]) # 0 for Gaussian, 1 for Laplace
+    # epsilon = float(sys.argv[5]) # total privacy budget
+    comp = int(sys.argv[5]) #
+    mech = int(sys.argv[6]) # 0 for Gaussian, 1 for Laplace
 
     # The number of topics
     K = 100
@@ -61,8 +62,7 @@ def main():
     # with open(the_filename, 'rb') as f:
     #     docset = cPickle.load(f)
 
-    the_filename = Data_PATH+'wiki_docs_D=%s' %(400000)
-    # the_filename = Data_PATH+'wiki_docsmallset_D=%s' %(800000)
+    the_filename = Data_PATH+'wiki_docsmallset_D=%s' %(400000)
     with open(the_filename, 'rb') as f:
         docset = cPickle.load(f)
 
@@ -78,24 +78,32 @@ def main():
     vocab = file('./dictnostops.txt').readlines()
     W = len(vocab)
 
-    gamma_noise = 0 # will use Laplace noise all the time
-    if mech==0:
-        res = minimize_scalar(cal_amp_eps.f, bounds=(0, 400), args=(epsilon, comp, documentstoanalyze, nu), method='bounded')
-    else:
-        res = minimize_scalar(cal_amp_eps.f_1, bounds=(0, 400), args=(epsilon, comp, documentstoanalyze, nu), method='bounded')
+    """ privacy budget calculation """
+    # (1) to set the same level of burned privacy, we first calculate MA composition
+    # sigma = 1 + 1e-6
+    sigma = 2
+
+    total_del = 1e-4
+    J = documentstoanalyze
+    total_eps_MA = cal_pri.moments_accountant(sigma, total_del, nu, J)
+    print 'total privacy loss is %f' %(total_eps_MA)
+
+    #(2) strong composition
+    del_iter = 1e-6
+    res = minimize_scalar(cal_pri.strong_composition, bounds=(0, 50), args=(total_eps_MA, total_del, J, nu, del_iter), method='bounded')
     eps_iter = res.x
-    print res.x
 
-    if mech==1:
-        delta_iter = 0
+    gamma_noise = 0 # we don't use this at all. 
+
+    if comp==0: #MA
+        c2 = 2 * np.log(1.25 / del_iter)
+        eps_iter = np.sqrt(c2)/sigma
+        budget = [eps_iter, del_iter]
+
+    elif comp==1: #strong composition
+        budget = [eps_iter, del_iter]
     else:
-        delta = 0.0001
-        if comp==0:
-            delta_iter = delta/(documentstoanalyze*nu)
-        else:
-            delta_iter = 0.000001
-
-    budget = [eps_iter, delta_iter]
+        print "we don't support this composition"
 
     if priv:
         print 'private version'
@@ -130,9 +138,9 @@ def main():
         # else:
         #     method = 'private_epsilon_%s_cdp_%s' %(epsilon, cdp)
         # method = 'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], D)
-        method = 'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_Lap=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], D)
+        method = Results_PATH+'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_Lap=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], total_eps_MA, sys.argv[5], sys.argv[6], D)
     else:
-        method = 'static_nonprivate_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_Lap=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], D)
+        method = Results_PATH+'static_nonprivate_seed=%s_J=%s_S=%s_priv=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], D)
 
     numpy.save(method+'.npy', perplexity)
     # method = 'private_epsilon_1'
