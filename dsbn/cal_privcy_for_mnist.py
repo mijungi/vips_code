@@ -7,9 +7,9 @@ import scipy.io
 
 D = 60000
 Hmat = [50, 100]
-# Smat = [20]
-Smat = [20, 400]
-Itermat = 0.25*D
+Smat = [400,800,1600]
+#Smat = [200, 400]
+Itermat = D
 
 ndims = 784
 
@@ -18,8 +18,8 @@ totDel = 1e-4
 
 ntrain = 50000
 
-#sigma = 2
-sigma = 1 + 1e-6
+sigma = 2
+#sigma = 1 + 1e-6
 del_iter = 1e-9
 
 

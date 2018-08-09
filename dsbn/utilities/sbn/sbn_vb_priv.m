@@ -72,7 +72,8 @@ while (iter < opts.maxit)
     
     %% noised up average vTrain
     avg_vTrain = sum(Vtrain, 2)/ntrain;
-    sen = sqrt(p)/ntrain_tot;
+    sen = sqrt(p)/ntrain;
+    
     %(1) first sufficient statistic
     noise = Gaussian_noise(epsilon, delta, p, 1);
     
@@ -126,7 +127,7 @@ while (iter < opts.maxit)
 %     SigmaW = 1./(boost*gamma0Train*Htrain'+invgammaW);
     
     avg_Htrain_Vtrain = Htrain*Vtrain'/ntrain;
-    sen = sqrt(p*K)/ntrain_tot;
+    sen = sqrt(p*K)/ntrain;
     %(2) second sufficient statistic
     noise = Gaussian_noise(epsilon, delta, [K, p], 1);
 %     noisedup_avg_Htrain_Vtrain = avg_Htrain_Vtrain + noise;
@@ -138,10 +139,10 @@ while (iter < opts.maxit)
     
     noisedup_avg_Htrain_Vtrain(noisedup_avg_Htrain_Vtrain>1)=1;
     noisedup_avg_Htrain_Vtrain(noisedup_avg_Htrain_Vtrain<0)=0;
-    noisedup_avg_Htrain_Vtrain = ntrain*noisedup_avg_Htrain_Vtrain;
+    noisedup_avg_Htrain_Vtrain = ntrain*noisedup_avg_Htrain_Vtrain; 
     
     %%
-    sen = sqrt(K)/ntrain_tot;
+    sen = sqrt(K)/ntrain;
     %(3) third sufficient statistic
     noise = Gaussian_noise(epsilon, delta, K, 1);
     avgHtrain = sum(Htrain,2)/ntrain;
@@ -157,7 +158,7 @@ while (iter < opts.maxit)
     noisedup_avgHtrain = ntrain*noisedup_avgHtrain;
     
     tt = (gamma0Train*Htrain')/ntrain;
-    sen = sqrt(p*K)/ntrain_tot;
+    sen = sqrt(p*K)/ntrain;
     %(4) fourth sufficient statistic
     noise = Gaussian_noise(epsilon, delta, [p, K], 1);
     % noisedup_tt = noise + tt;
@@ -169,7 +170,8 @@ while (iter < opts.maxit)
     
     noisedup_tt(noisedup_tt>1)=1;
     noisedup_tt(noisedup_tt<0)=0;
-    tt = ntrain*noisedup_tt;
+    %tt = ntrain*noisedup_tt;
+    tt = noisedup_tt;
     
     SigmaW = 1./(boost*tt+invgammaW);
 
@@ -182,7 +184,7 @@ while (iter < opts.maxit)
         
         % noise up avg HH
         avgHH = HH/ntrain;
-        sen = sqrt(p)*K/(4*ntrain_tot);
+        sen = sqrt(p)*K/(4*ntrain);
         %(5) fifth sufficient statistic
         noise = AnalyzeGauss(epsilon, delta, K, 1);
 %         noisedup_avgHH = avgHH + noise;
@@ -244,7 +246,7 @@ while (iter < opts.maxit)
     
     %% 4. update c
     %     sigmaC = 1./(boost*sum(gamma0Train,2)+1);
-    sen = sqrt(p)/(2*ntrain_tot);
+    sen = sqrt(p)/(2*ntrain);
     %(6) sixth sufficient statistic
     noise = Gaussian_noise(epsilon, delta, p, 1);
 %     noisedup_sum_gamma0Train = sum(gamma0Train,2)/ntrain + noise;
@@ -266,7 +268,7 @@ while (iter < opts.maxit)
     %     noisedup_tt = noise + tt;
     %     noisedup_tt(noisedup_tt>1)=1;
     %     noisedup_tt(noisedup_tt<0)=0;
-    %     tt = ntrain*noisedup_tt;
+    %tt = ntrain*noisedup_tt;
     sum_gamma0Train_W_Htrain = sum(tt.*W,2);
     c = sigmaC.*(boost*(noisedup_sum_vTrain -0.5*ntrain - sum_gamma0Train_W_Htrain));
     
@@ -292,7 +294,11 @@ while (iter < opts.maxit)
     gamma1 = 1/2./(b+realmin).*tanh(b/2+realmin);
     %(7) seventh sufficient statistic
     %sen =  0.25*sqrt(K)/ntrain_tot;
+    
     sen = sqrt(K)/4;
+    % test sen
+    %sen = 0.00001; 
+    
     noise = Gaussian_noise(epsilon, delta, K, 1);
 %     noisedup_gamma1 = gamma1 + noise;
 

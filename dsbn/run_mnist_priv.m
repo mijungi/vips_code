@@ -8,7 +8,7 @@ clc;
 addpath(genpath('.'));
 %%
 
-whichComp = 1; % 0 for MA, 1 for SC
+whichComp = 0; % 0 for MA, 1 for SC
 
 % choose either sigma=2 or sigma=1 for different values of totEps
 sigma = 2;
@@ -16,17 +16,20 @@ sigma = 2;
 
 % seednummat = 2;
 % seednummat = linspace(1, 10, 10);
-seednummat = 1:4; 
+seednummat = 1:10; 
 % seednummat = [6, 7, 8, 9, 10]; 
 Hmat = [50,100];
-Smat = [20,400];
-Itermat = [0.25].*60000; % percent of the entire data
+Smat = [400,800,1600];
+Itermat = 60000; % percent of the entire data
 
 
 for seednum = seednummat
     rng(seednum, 'twister');
 
     load mnist_all.mat; % the whole dataset, 60,000 datapoints
+    % data-preprocessing as binary variables
+    traindata = 1*(traindata>0);
+    testdata = 1*(testdata>0);
 
     [numdims,ntrain] = size(traindata); traindata = +(traindata>=rand(numdims,ntrain));
     [numdims,ntest] = size(testdata); testdata = +(testdata>=rand(numdims,ntest));
