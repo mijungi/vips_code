@@ -8,7 +8,7 @@ clc;
 addpath(genpath('.'));
 %%
 
-whichComp = 0; % 0 for MA, 1 for SC
+whichComp = 1; % 0 for MA, 1 for SC
 
 % choose either sigma=2 or sigma=1 for different values of totEps
 sigma = 2;
@@ -19,7 +19,8 @@ sigma = 2;
 seednummat = 1:10; 
 % seednummat = [6, 7, 8, 9, 10]; 
 Hmat = [50,100];
-Smat = [400,800,1600];
+Smat = [400,800,1600, 3200];
+% Smat = 1600;
 Itermat = 60000; % percent of the entire data
 
 

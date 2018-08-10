@@ -5,17 +5,20 @@ addpath(genpath('.'));
 %% load mnist data
 
 % seednummat = linspace(1, 10, 10);
-seednummat = 1:4; 
+seednummat = 1:10; 
 Hmat = [50, 100];
 % Smat = [10, 50, 100, 200];
-Smat = [20, 400];
-Itermat = [0.25].*60000; % percent of the entire data
+Smat = [400,800,1600];
+Itermat = 60000; % percent of the entire data
 % Itermat = [0.1, 0.2, 0.5].*60000; % percent of the entire data
 
 for seednum = seednummat
     rng(seednum, 'twister');
 
     load mnist_all.mat; % the whole dataset, 60,000 datapoints
+    % data-preprocessing as binary variables
+    traindata = 1*(traindata>0);
+    testdata = 1*(testdata>0);
 
     [numdims,ntrain] = size(traindata); traindata = +(traindata>=rand(numdims,ntrain));
     [numdims,ntest] = size(testdata); testdata = +(testdata>=rand(numdims,ntest));
