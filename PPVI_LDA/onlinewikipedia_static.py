@@ -90,9 +90,9 @@ def main():
 
     """ privacy budget calculation """
     # (1) to set the same level of burned privacy, we first calculate MA composition
-    sigma = 1.00000000000000000000000000000000000001 #a small value to minimize the noise
+    #sigma = 1.00000000000000000000000000000000000001 #a small value to minimize the noise
     #sigma = 1.1  #an intermediate value
-    #sigma = 1.24 #an intermediate value
+    sigma = 1.24 #an intermediate value
     #sigma = 1.5  #an intermediate value
     #sigma = 2 #a larger value, expected to substantially reduce privacy and performance.
 
