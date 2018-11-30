@@ -5,9 +5,11 @@ import subprocess
 
 D = 400000
 # Smat = [10, 20, 50, 100, 200, 400]
-Smat = [10, 100, 200]
+#Smat = [10, 100, 200]
+Smat = [500] #JF
 # Jmat = [0.05, 0.1, 0.2, 0.4]
-Jmat = [0.4]
+# Jmat = [0.4]
+Jmat = [1]
 seednummat = [0]
 # seednummat = [4, 5, 6, 7, 8, 9, 10]
 # unpack inputs

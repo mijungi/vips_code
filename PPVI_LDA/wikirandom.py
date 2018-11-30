@@ -43,8 +43,11 @@ def get_random_wikipedia_article():
             f = urllib2.urlopen(req)
             line = f.read()
 
-            result = re.search(r'<title>(.*) - Wikipedia, the free encyclopedia</title>\n', line)
+            #result = re.search(r'<title>(.*) - Wikipedia, the free encyclopedia</title>\n', line)
+            result = re.search(r'<title>(.*) - Wikipedia</title>\n', line) #JF: Changed for 2018 Wikipedia formatting.
             articletitle = result.group(1)
+            articletitle = articletitle.replace(' ', '_') #JF: for some reason it doesn't work unless I do this
+            print articletitle #JF: added this for debug, but it's actually pretty interesting to see
 
             req = urllib2.Request('http://en.wikipedia.org/w/index.php?title=Special:Export/%s&action=submit' \
                                       % (articletitle),
@@ -81,12 +84,13 @@ def get_random_wikipedia_article():
             continue
 
         """ Need to do some pre-processing such that each document has less than maximum length N """
-        maxLen = 10000
-        if len(all)>maxLen:
+        #JF: We will do this pre-processing in the download_wikipage.py script instead, since we will need the vocab in the new version, and I don't want to have to reload it, change the function's interface, or pass it around.
+        #maxLen = 10000
+        #if len(all)>maxLen:
             # print ('word count is above %s' % maxLen)
-            l = list(all.split()) # converting string to list
-            all = ' '.join([str(w) for w in random.sample(l, len(l))]) # randomly sample words without replacement
-            all = all[0:maxLen] # truncate
+        #    l = list(all.split()) # converting string to list
+        #    all = ' '.join([str(w) for w in random.sample(l, len(l))]) # randomly sample words without replacement
+        #    all = all[0:maxLen] # truncate
 
     return(all, articletitle)
 

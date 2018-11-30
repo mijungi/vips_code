@@ -30,8 +30,14 @@ import wikirandom
 import os
 import calculate_privacy_burned as cal_pri
 
-Data_PATH = "/".join([os.getenv("HOME"), "LDA_data/"])
-Results_PATH = "/".join([os.getenv("HOME"), "LDA_results2/"])
+#Data_PATH = "/".join([os.getenv("HOME"), "LDA_data/"])
+#Results_PATH = "/".join([os.getenv("HOME"), "LDA_results2/"])
+from os.path import expanduser
+home = expanduser("~") #JF: makes the above lines work on Windows
+Data_PATH = os.path.join(home, "LDA_data")
+Results_PATH = os.path.join(home, "LDA_result")
+
+resampleShortDocs = True;
 
 # numpy.random.seed(12345)
 
@@ -55,14 +61,18 @@ def main():
     mech = int(sys.argv[6]) # 0 for Gaussian, 1 for Laplace
 
     # The number of topics
-    K = 100
+    #K = 100
+    K = 50 #JF
 
     # load data
     # the_filename = Data_PATH+'wiki_docsmallset'
     # with open(the_filename, 'rb') as f:
     #     docset = cPickle.load(f)
 
-    the_filename = Data_PATH+'wiki_docsmallset_D=%s' %(400000)
+    #the_filename = Data_PATH+'wiki_docsmallset_D=%s' %(400000)
+    the_filename = os.path.join(Data_PATH, 'wiki_docsmallset_D=%s' %(400000)) #JF: Make this work on Windows
+    if resampleShortDocs:
+        the_filename= the_filename + '_resample_short_docs'
     with open(the_filename, 'rb') as f:
         docset = cPickle.load(f)
 
@@ -80,8 +90,12 @@ def main():
 
     """ privacy budget calculation """
     # (1) to set the same level of burned privacy, we first calculate MA composition
-    # sigma = 1 + 1e-6
-    sigma = 2
+    sigma = 1.00000000000000000000000000000000000001 #a small value to minimize the noise
+    #sigma = 1.1  #an intermediate value
+    #sigma = 1.24 #an intermediate value
+    #sigma = 1.5  #an intermediate value
+    #sigma = 2 #a larger value, expected to substantially reduce privacy and performance.
+
 
     total_del = 1e-4
     J = documentstoanalyze
@@ -138,10 +152,15 @@ def main():
         # else:
         #     method = 'private_epsilon_%s_cdp_%s' %(epsilon, cdp)
         # method = 'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], D)
-        method = Results_PATH+'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_Lap=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], total_eps_MA, sys.argv[5], sys.argv[6], D)
-    else:
-        method = Results_PATH+'static_nonprivate_seed=%s_J=%s_S=%s_priv=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], D)
 
+        #method = Results_PATH+'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_Lap=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], total_eps_MA, sys.argv[5], sys.argv[6], D)
+        method = os.path.join(Results_PATH,'static_private_seed=%s_J=%s_S=%s_priv=%s_epsilon=%s_compo=%s_Lap=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], total_eps_MA, sys.argv[5], sys.argv[6], D))
+        
+    else:
+        #method = Results_PATH+'static_nonprivate_seed=%s_J=%s_S=%s_priv=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], D)
+        method = os.path.join(Results_PATH,'static_nonprivate_seed=%s_J=%s_S=%s_priv=%s_D=%s' %(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], D))
+    if resampleShortDocs:
+        method = method + '_resample_short_docs'
     numpy.save(method+'.npy', perplexity)
     # method = 'private_epsilon_1'
     # filename = method+'_D=_%s_S=_%s' %(D, batchsize)

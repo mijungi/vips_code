@@ -26,6 +26,13 @@ import corpus
 
 n.random.seed(100000001)
 meanchangethresh = 0.001
+maxLen = 500
+clippingProportion = 0.1 #1 for non-private #JF: Improve sensitivity by clipping
+#(actually projecting) the norm of a document's sufficient statistics
+#to this fraction of maxLen.  To do no clipping, set to 1.
+#Set this to 1 when performing non-private LDA, where clipping is not required.
+print "clipping proportion %f" %(clippingProportion)
+
 
 def dirichlet_expectation(alpha):
     """
@@ -146,6 +153,7 @@ class OnlineLDA:
         # Now, for each document d update that document's gamma and phi
         it = 0
         meanchange = 0
+        numClipped = 0 #JF: how many documents in the minibatch were subject to clipping
         for d in range(0, batchD):
             # print sum(wordcts[d])
             # These are mostly just shorthand (but might help cache locality)
@@ -178,8 +186,25 @@ class OnlineLDA:
             # Contribution of document d to the expected sufficient
             # statistics for the M step.
             # sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm)
-            sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm)
-
+            
+            #sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm) #JF: commented, to add clipping code
+            if clippingProportion == 1: 
+                sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm)
+            else: #JF: implement norm clipping
+                temp = n.outer(expElogthetad.T, cts/phinorm)
+                norm = n.linalg.norm(temp * self._expElogbeta[:, ids]) #TODO: can I calculate the norm without doing this multiplication?
+                #print "SS norm: %f" %(norm) #JF: testing
+                #print "SS sum: %f" %(n.sum(temp * self._expElogbeta[:, ids] )) #JF: testing
+                clippedSensitivity = maxLen * clippingProportion #JF: per-document sensitivity, after clipping
+                if norm > clippedSensitivity:
+                    temp = temp / (norm/clippedSensitivity) #clip (really, project) sufficient statistics for the document to satisfy an L2 norm constraint
+                    #normAfterClipping = n.linalg.norm(temp * self._expElogbeta[:, ids])
+                    #print "clipping, new norm is %f" %(normAfterClipping)
+                    numClipped += 1
+                sstats[:, ids] += temp
+        
+        if clippingProportion != 1:
+            print "%d of %d documents clipped" %(numClipped, batchD)
 
         # This step finishes computing the sufficient statistics for the
         # M step, so that
@@ -202,8 +227,6 @@ class OnlineLDA:
 
         if self.priv:
             epsilon = self.budget[0]
-            maxLen = 10000
-            # maxLen = 1000
 
             if self.gamma_noise:
                 gam_shape = 1
@@ -217,7 +240,12 @@ class OnlineLDA:
                     delta_iter = self.budget[1]
                     c2 = 2*n.log(1.25/delta_iter)
                     #sensitivity = maxLen/float(self._D)
-		    sensitivity = maxLen/float(batchD)
+                    sensitivity = maxLen/float(batchD)
+                    print "original sensitivity is %f" %(sensitivity)
+                    #sensitivity = 0.0013/float(batchD) #JF: TESTING!!!!!!!!!! BEST CASE
+                    #print "best case sensitivity is %f" %(sensitivity)
+                    sensitivity *= clippingProportion #JF
+                    print "clipped sensitivity is %f" %(sensitivity) #JF
                     nsv = c2*(sensitivity**2)/(epsilon**2)
                     noise = n.random.normal(0,n.sqrt(nsv),sstats.shape)
 
