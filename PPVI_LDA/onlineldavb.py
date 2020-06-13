@@ -83,7 +83,7 @@ def parse_doc_list(docs, vocab):
 		docs[d] = re.sub(r'-', ' ', docs[d])
 		docs[d] = re.sub(r'[^a-z ]', '', docs[d])
 		docs[d] = re.sub(r' +', ' ', docs[d])
-		words = string.split(docs[d])
+		words = docs[d].split()
 		ddict = dict()
 		for word in words:
 			if (word in vocab):

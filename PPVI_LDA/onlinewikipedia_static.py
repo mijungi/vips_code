@@ -125,11 +125,10 @@ def main():
 		c2 = 2 * np.log(1.25 / del_iter)
 		eps_iter = np.sqrt(c2) / sigma
 		budget = [eps_iter, del_iter]
-
 	elif comp == 1:  # strong composition
 		budget = [eps_iter, del_iter]
 	else:
-		print("we don't support this composition")
+		raise Exception("We don't support this composition")
 
 	if priv:
 		print('private version')
@@ -146,9 +145,9 @@ def main():
 		docsubset = list(docset[i] for i in idx_minibatch)
 
 		# Give them to online LDA
-		(gamma, bound) = olda.update_lambda_docs(docsubset)
+		gamma, bound = olda.update_lambda_docs(docsubset)
 		# Compute an estimate of held-out perplexity
-		(wordids, wordcts) = onlineldavb.parse_doc_list(docsubset, olda._vocab)
+		wordids, wordcts = onlineldavb.parse_doc_list(docsubset, olda._vocab)
 		perwordbound = bound * len(docsubset) / (D * sum(map(sum, wordcts)))
 		print('%d:  rho_t = %f,  held-out perplexity estimate = %f' % \
 		      (iteration, olda._rhot, numpy.exp(-perwordbound)))

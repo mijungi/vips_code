@@ -51,7 +51,7 @@ def enforceDocumentMaxLength(docset, maxLen, vocabFilename, resampleShortDocumen
 		docset[i] = re.sub(r' +', ' ', docset[i])
 
 		# get only in-vocab words
-		words = string.split(docset[i])
+		words = docset[i].split()
 		wordsInVocab = []
 		for word in words:
 			if (word in vocab):
