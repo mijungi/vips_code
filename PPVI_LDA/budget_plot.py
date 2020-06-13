@@ -27,7 +27,7 @@ for Jlist in Jmat:
         budget_cdp = numpy.sqrt(2*epsilon)/float(2*nu*numpy.sqrt(J))
         budget_adv = epsilon/float(4*nu*numpy.sqrt(2*J*numpy.log(1/delta)))
         budget_linear = epsilon/float(2*J*nu)
-        print budget_linear
+        print(budget_linear)
 
         if S==10:
             cdp00, = plt.plot(Jlist, budget_cdp, 'o', color = (1, 0.6, 0), label = 'cdp_S_%s' %(S))

@@ -1,4 +1,4 @@
-import cPickle, sys
+import pickle, sys
 import numpy as n
 import wikirandom
 import os
@@ -23,7 +23,7 @@ vocabFilename = './dictnostops.txt' #JF: need the vocab for enforcing the maximu
 resampleShortDocuments = False #JF: whether to resample documents that are shorter than maxLen up to the maximum length.  This could be helpful if short documents are getting swamped by the noise
 
 length_seed = n.shape(seednummat)
-print length_seed[0]
+print(length_seed[0])
 
 #JF: This function is used to enforce that all documents are less than the maximum specified length, taking into account the vocabulary
 def enforceDocumentMaxLength(docset, maxLen, vocabFilename, resampleShortDocuments):
@@ -46,11 +46,11 @@ def enforceDocumentMaxLength(docset, maxLen, vocabFilename, resampleShortDocumen
         for word in words:
             if (word in vocab):
                 wordsInVocab.append(word)
-        print len(wordsInVocab)
+        print(len(wordsInVocab))
         #check length of document and determine whether to bootstrap resample the words
         if len(wordsInVocab) > maxLen or resampleShortDocuments:
             adjustedWordsInVocab = [];
-            print 'resampling to length ' + str(maxLen)
+            print('resampling to length ' + str(maxLen))
             for j in range(0, maxLen):
                 adjustedWordsInVocab.append(random.choice(wordsInVocab)) #random sampling WITH replacement
             wordsInVocab = adjustedWordsInVocab
@@ -60,19 +60,19 @@ def enforceDocumentMaxLength(docset, maxLen, vocabFilename, resampleShortDocumen
 
 for i in range(0, length_seed[0]):
     seednum = seednummat[i]
-    print seednum
+    print(seednum)
     n.random.seed(int(seednum))
 
     # Download some articles
     """ Need to do some pre-processing such that each document has less than maximum length N """
     (docset, articlenames) = wikirandom.get_random_wikipedia_articles(int(D))
-    print 'enforcing document length requirement for privacy'
+    print('enforcing document length requirement for privacy')
     docset = enforceDocumentMaxLength(docset, maxLen, vocabFilename, resampleShortDocuments) #JF: ensure that all documents are no longer than maxLen
 
     # """ Save the file """
     #the_filename = Data_PATH+'wiki_docs_seednum=%s' %(seednum)
     the_filename = os.path.join(Data_PATH, 'wiki_docs_seednum=%s' %(seednum))
     with open(the_filename, 'wb') as f:
-        cPickle.dump(docset, f)
+        pickle.dump(docset, f)
 
 

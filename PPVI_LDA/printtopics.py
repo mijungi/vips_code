@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, os, re, random, math, urllib2, time, cPickle
+import sys, os, re, random, math, urllib.request, urllib.error, urllib.parse, time, pickle
 import numpy
 
 import onlineldavb
@@ -33,13 +33,13 @@ def main():
     for k in range(0, len(testlambda)):
         lambdak = list(testlambda[k, :])
         lambdak = lambdak / sum(lambdak)
-        temp = zip(lambdak, range(0, len(lambdak)))
+        temp = list(zip(lambdak, list(range(0, len(lambdak)))))
         temp = sorted(temp, key = lambda x: x[0], reverse=True)
-        print 'topic %d:' % (k)
+        print('topic %d:' % (k))
         # feel free to change the "53" here to whatever fits your screen nicely.
         for i in range(0, 10):
-            print '%20s  \t---\t  %.4f' % (vocab[temp[i][1]], temp[i][0])
-        print
+            print('%20s  \t---\t  %.4f' % (vocab[temp[i][1]], temp[i][0]))
+        print()
 
 if __name__ == '__main__':
     main()

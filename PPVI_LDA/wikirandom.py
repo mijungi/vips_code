@@ -21,7 +21,7 @@
 # (2) You might need to modify get_random_wikipedia_article, depending on how wikipedia forms their articles!
 #     It seems like the article formulations change over time. (I also had to change it when I download wiki pages in 2016)
 
-import sys, urllib2, re, string, time, threading
+import sys, urllib.request, urllib.error, urllib.parse, re, string, time, threading
 # import numpy as n
 import random
 
@@ -39,24 +39,24 @@ def get_random_wikipedia_article():
         articletitle = None
         failed = False
         try:
-            req = urllib2.Request('http://en.wikipedia.org/wiki/Special:Random', None, { 'User-Agent' : 'x'})
-            f = urllib2.urlopen(req)
+            req = urllib.request.Request('http://en.wikipedia.org/wiki/Special:Random', None, { 'User-Agent' : 'x'})
+            f = urllib.request.urlopen(req)
             line = f.read()
 
             #result = re.search(r'<title>(.*) - Wikipedia, the free encyclopedia</title>\n', line)
             result = re.search(r'<title>(.*) - Wikipedia</title>\n', line) #JF: Changed for 2018 Wikipedia formatting.
             articletitle = result.group(1)
             articletitle = articletitle.replace(' ', '_') #JF: for some reason it doesn't work unless I do this
-            print articletitle #JF: added this for debug, but it's actually pretty interesting to see
+            print(articletitle) #JF: added this for debug, but it's actually pretty interesting to see
 
-            req = urllib2.Request('http://en.wikipedia.org/w/index.php?title=Special:Export/%s&action=submit' \
+            req = urllib.request.Request('http://en.wikipedia.org/w/index.php?title=Special:Export/%s&action=submit' \
                                       % (articletitle),
                                   None, { 'User-Agent' : 'x'})
-            f = urllib2.urlopen(req)
+            f = urllib.request.urlopen(req)
             all = f.read()
-        except (urllib2.HTTPError, urllib2.URLError):
-            print 'oops. there was a failure downloading %s. retrying...' \
-                % articletitle
+        except (urllib.error.HTTPError, urllib.error.URLError):
+            print('oops. there was a failure downloading %s. retrying...' \
+                % articletitle)
             failed = True
             continue
         # print 'downloaded %s. parsing...' % articletitle
@@ -78,8 +78,8 @@ def get_random_wikipedia_article():
             all = re.sub(r'\&lt;.*?&gt;', '', all)
         except:
             # Something went wrong, try again. (This is bad coding practice.)
-            print 'oops. there was a failure parsing %s. retrying...' \
-                % articletitle
+            print('oops. there was a failure parsing %s. retrying...' \
+                % articletitle)
             failed = True
             continue
 
@@ -117,7 +117,7 @@ def get_random_wikipedia_articles(n):
     WikiThread.articlenames = list()
     wtlist = list()
     for i in range(0, n, maxthreads):
-        print 'downloaded %d/%d articles...' % (i, n)
+        print('downloaded %d/%d articles...' % (i, n))
         for j in range(i, min(i+maxthreads, n)):
             wtlist.append(WikiThread())
             wtlist[len(wtlist)-1].start()
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     (articles, articlenames) = get_random_wikipedia_articles(10)
     for i in range(0, len(articles)):
-        print articlenames[i]
+        print(articlenames[i])
 
     t1 = time.time()
-    print 'took %f' % (t1 - t0)
+    print('took %f' % (t1 - t0))

@@ -22,4 +22,4 @@ res = minimize_scalar(cal_pri.strong_composition, bounds=(0, 10),
                       method='bounded')
 eps_iter = res.x
 
-print eps_iter
+print(eps_iter)

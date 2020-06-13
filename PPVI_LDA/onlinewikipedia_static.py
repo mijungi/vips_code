@@ -21,7 +21,7 @@ Mijung's comment on modification:
 """
 """ Mijung edited Matt's online LDA code for private Batch variational inference for LDA, Aug 11, 2016 """
 
-import cPickle, string, numpy, getopt, sys, random, time, re, pprint
+import pickle, string, numpy, getopt, sys, random, time, re, pprint
 import numpy as np
 import onlineldavb
 # import cal_amp_eps
@@ -74,15 +74,15 @@ def main():
     if resampleShortDocs:
         the_filename= the_filename + '_resample_short_docs'
     with open(the_filename, 'rb') as f:
-        docset = cPickle.load(f)
+        docset = pickle.load(f)
 
     D = len(docset)
-    print 'document length: %s'%(D)
+    print('document length: %s'%(D))
 
     nu = batchsize/float(D) # sampling rate
     numpy.random.seed(seednum)
 
-    print 'seednum %s mini-batchsize %s and number of iter %s' %(seednum, batchsize, documentstoanalyze)
+    print('seednum %s mini-batchsize %s and number of iter %s' %(seednum, batchsize, documentstoanalyze))
 
     # Our vocabulary
     vocab = file('./dictnostops.txt').readlines()
@@ -100,7 +100,7 @@ def main():
     total_del = 1e-4
     J = documentstoanalyze
     total_eps_MA = cal_pri.moments_accountant(sigma, total_del, nu, J)
-    print 'total privacy loss is %f' %(total_eps_MA)
+    print('total privacy loss is %f' %(total_eps_MA))
 
     #(2) strong composition
     del_iter = 1e-6
@@ -117,10 +117,10 @@ def main():
     elif comp==1: #strong composition
         budget = [eps_iter, del_iter]
     else:
-        print "we don't support this composition"
+        print("we don't support this composition")
 
     if priv:
-        print 'private version'
+        print('private version')
 
     olda = onlineldavb.OnlineLDA(vocab, K, D, 1./K, 1./K, 1024., 0.7, priv, budget, gamma_noise, mech)
 
@@ -139,8 +139,8 @@ def main():
         # Compute an estimate of held-out perplexity
         (wordids, wordcts) = onlineldavb.parse_doc_list(docsubset, olda._vocab)
         perwordbound = bound * len(docsubset) / (D * sum(map(sum, wordcts)))
-        print '%d:  rho_t = %f,  held-out perplexity estimate = %f' % \
-            (iteration, olda._rhot, numpy.exp(-perwordbound))
+        print('%d:  rho_t = %f,  held-out perplexity estimate = %f' % \
+            (iteration, olda._rhot, numpy.exp(-perwordbound)))
 
         perplexity[iteration] = numpy.exp(-perwordbound)
 

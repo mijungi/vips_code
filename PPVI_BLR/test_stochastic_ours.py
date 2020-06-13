@@ -87,7 +87,7 @@ if  __name__ =='__main__':
         # update iteration number
         iter = iter + 1
 
-    print('AUC under the non-private version is', auc_nonprivate_stoch[-1])
+    print(('AUC under the non-private version is', auc_nonprivate_stoch[-1]))
 
     """ (2) we test the private version ! """
     print('now we test a private version!')
@@ -98,7 +98,7 @@ if  __name__ =='__main__':
 
     res = minimize_scalar(cal_amp_eps.f, bounds=(0, 400), args=(epsilon, comp, MaxIter, nu), method='bounded')
     eps_iter = res.x
-    print('Assigned per-iteration budget is ', eps_iter)
+    print(('Assigned per-iteration budget is ', eps_iter))
     delta = 0.000001
     if comp==0:
         delta_iter = delta/(MaxIter*nu)
@@ -144,4 +144,4 @@ if  __name__ =='__main__':
         # update iteration number
         iter = iter + 1
 
-    print('AUC under the private version is', auc_private_stoch_zcdp[-1])
+    print(('AUC under the private version is', auc_private_stoch_zcdp[-1]))

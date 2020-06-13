@@ -3,7 +3,7 @@
 #It expects that longer documents have been resampled to maxLength (though it will still work
 #otherwise, but it specifically doesn't resample documents that are exactly the correct length,
 #under the understanding that these are longer docs that have already been resampled)
-import cPickle
+import pickle
 import os
 import random, re, string
 
@@ -37,14 +37,14 @@ def enforceDocumentMaxLength(docset, maxLen, vocabFilename, resampleShortDocumen
         for word in words:
             if (word in vocab):
                 wordsInVocab.append(word)
-        print len(wordsInVocab)
+        print(len(wordsInVocab))
         if len(wordsInVocab) == 0:
             docset[i] = ''
             continue;
         #check length of document and determine whether to bootstrap resample the words
         if len(wordsInVocab) > maxLen or (len(wordsInVocab) < maxLen and resampleShortDocuments): #modified from my other script - only resample up to full length if needed. Skip if it's already been downsampled to maxLen
             adjustedWordsInVocab = [];
-            print 'resampling to length ' + str(maxLen)
+            print('resampling to length ' + str(maxLen))
             for j in range(0, maxLen):
                 adjustedWordsInVocab.append(random.choice(wordsInVocab)) #random sampling WITH replacement
             wordsInVocab = adjustedWordsInVocab
@@ -58,11 +58,11 @@ for whichdoc in range(0, 400):
     #the_filename = Data_PATH+'wiki_docs_seednum=%s' %(whichdoc)
     the_filename = os.path.join(Data_PATH,'wiki_docs_seednum=%s' %(whichdoc))
     with open(the_filename, 'rb') as f:
-        docset1 = cPickle.load(f)
+        docset1 = pickle.load(f)
         docset2 = enforceDocumentMaxLength(docset1, maxLen, vocabFilename, resampleShortDocuments)
-        print "docset %s is loaded" %(whichdoc)
+        print("docset %s is loaded" %(whichdoc))
         the_filename2 = os.path.join(Data_PATH,'wiki_docs_seednum=%s_resample_short_docs' %(whichdoc))
         with open(the_filename2, 'wb') as f:
-            cPickle.dump(docset2, f)
+            pickle.dump(docset2, f)
 
 

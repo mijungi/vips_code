@@ -63,7 +63,7 @@ def f(x, total_eps, which_comp, J, nu):
         delta_iter = 0.000001
         delta = 0.0001 - J*nu*delta_iter
         if delta<0:
-            print "delta is less than 0"
+            print("delta is less than 0")
 
         return (total_eps - np.sqrt(2*J*np.log(1/delta))*eps_amp - J*eps_amp*(np.exp(eps_amp)-1))**2
 

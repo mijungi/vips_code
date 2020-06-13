@@ -31,7 +31,7 @@ clippingProportion = 0.1 #1 for non-private #JF: Improve sensitivity by clipping
 #(actually projecting) the norm of a document's sufficient statistics
 #to this fraction of maxLen.  To do no clipping, set to 1.
 #Set this to 1 when performing non-private LDA, where clipping is not required.
-print "clipping proportion %f" %(clippingProportion)
+print("clipping proportion %f" %(clippingProportion))
 
 
 def dirichlet_expectation(alpha):
@@ -87,8 +87,8 @@ def parse_doc_list(docs, vocab):
                 if (not wordtoken in ddict):
                     ddict[wordtoken] = 0
                 ddict[wordtoken] += 1
-        wordids.append(ddict.keys())
-        wordcts.append(ddict.values())
+        wordids.append(list(ddict.keys()))
+        wordcts.append(list(ddict.values()))
 
     return((wordids, wordcts))
 
@@ -204,7 +204,7 @@ class OnlineLDA:
                 sstats[:, ids] += temp
         
         if clippingProportion != 1:
-            print "%d of %d documents clipped" %(numClipped, batchD)
+            print("%d of %d documents clipped" %(numClipped, batchD))
 
         # This step finishes computing the sufficient statistics for the
         # M step, so that
@@ -241,11 +241,11 @@ class OnlineLDA:
                     c2 = 2*n.log(1.25/delta_iter)
                     #sensitivity = maxLen/float(self._D)
                     sensitivity = maxLen/float(batchD)
-                    print "original sensitivity is %f" %(sensitivity)
+                    print("original sensitivity is %f" %(sensitivity))
                     #sensitivity = 0.0013/float(batchD) #JF: TESTING!!!!!!!!!! BEST CASE
                     #print "best case sensitivity is %f" %(sensitivity)
                     sensitivity *= clippingProportion #JF
-                    print "clipped sensitivity is %f" %(sensitivity) #JF
+                    print("clipped sensitivity is %f" %(sensitivity)) #JF
                     nsv = c2*(sensitivity**2)/(epsilon**2)
                     noise = n.random.normal(0,n.sqrt(nsv),sstats.shape)
 

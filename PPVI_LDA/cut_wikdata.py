@@ -1,6 +1,6 @@
 # __author__ = 'mijung'
 
-import cPickle
+import pickle
 import os
 import numpy
 
@@ -11,9 +11,9 @@ numpy.random.seed(seednum)
 
 the_filename = Data_PATH+'wiki_data'
 with open(the_filename, 'rb') as f:
-    docset = cPickle.load(f)
-print "docset all loaded"
-print len(docset)
+    docset = pickle.load(f)
+print("docset all loaded")
+print(len(docset))
 # rand_perm_nums =  numpy.random.permutation(len(docset))
 # # how_many_doc = 200000
 # how_many_doc = 800000

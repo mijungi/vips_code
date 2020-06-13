@@ -104,7 +104,7 @@ pos = np.arange(num_boxes) + 1
 upper_labels = [str(np.round(s, 2)) for s in medians]
 # upper_labels = [str(np.round(s, 1)) for s in medians]
 weights = ['bold', 'semibold']
-for tick, label in zip(range(num_boxes), ax1.get_xticklabels()):
+for tick, label in zip(list(range(num_boxes)), ax1.get_xticklabels()):
     # k = tick % 2
     # k = tick
     if tick<4:

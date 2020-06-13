@@ -118,8 +118,8 @@ if  __name__ =='__main__':
                 # update iteration number
                 iter = iter + 1
 
-            print('AUC is', auc_tst)
-            print('sigma is', sigma)
+            print(('AUC is', auc_tst))
+            print(('sigma is', sigma))
 
             auc_private_stoch_ours[k, repeat_idx] = auc_tst
 

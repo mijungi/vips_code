@@ -30,6 +30,6 @@ for seednum in seednummat:
     for S in Smat:
         for Jlist in Jmat:
             J = int(Jlist*D/float(S))
-            print [seednum, J, S, priv, comp, mech]
+            print([seednum, J, S, priv, comp, mech])
             sys.argv = ['onlinewikipedia_static.py', str(seednum), str(J), str(S),  str(priv), str(comp), str(mech)]
-            execfile('onlinewikipedia_static.py')
+            exec(compile(open('onlinewikipedia_static.py', "rb").read(), 'onlinewikipedia_static.py', 'exec'))
