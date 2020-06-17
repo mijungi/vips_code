@@ -1,8 +1,9 @@
 # __author__ = 'mijung'
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.optimize import minimize_scalar
+
 import cal_amp_eps
 import calculate_moments_accountant as MA
 import calculate_privacy_burned as cal_pri
@@ -10,8 +11,8 @@ import calculate_privacy_burned as cal_pri
 # epsilon = 0.5 # total privacy budget
 T = 16000
 
-total_del = 1e-4 # per-iteration budget
-q = 10/400000.0
+total_del = 1e-4  # per-iteration budget
+q = 10 / 400000.0
 
 sigma = 1 + 1e-10
 
@@ -22,4 +23,4 @@ res = minimize_scalar(cal_pri.strong_composition, bounds=(0, 10),
                       method='bounded')
 eps_iter = res.x
 
-print eps_iter
+print(eps_iter)

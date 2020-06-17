@@ -27,7 +27,7 @@ for K in Hmat:
         maxit = int(Itermat / float(S))
         # numIter = int(maxit * (K + ndims + 5))
         numIter = maxit
-        print numIter
+        print(numIter)
 
         sampRate = S / float(ntrain)
 
@@ -37,7 +37,7 @@ for K in Hmat:
         c2 = 2 * np.log(1.25 / del_iter)
         eps_iter = np.sqrt(c2) / sigma
         budget_MA = [eps_iter, del_iter, total_eps_MA]
-        print budget_MA
+        print(budget_MA)
 
         """save results"""
         method = 'privacy_budget_MA_S=%s_K=%s_sigma=%s' % (S,K,int(sigma))
@@ -49,7 +49,7 @@ for K in Hmat:
                               method='bounded')
         eps_iter = res.x
         budget_SC = [eps_iter, del_iter, total_eps_MA]
-        print budget_SC
+        print(budget_SC)
 
         """save results"""
         method = 'privacy_budget_SC_S=%s_K=%s_sigma=%s' % (S,K,int(sigma))

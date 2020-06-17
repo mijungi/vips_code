@@ -16,506 +16,514 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, re, time, string
-import numpy as n
-from scipy.special import gammaln, psi
+import re
+import string
+import sys
+import time
 
 import matplotlib.pyplot as plt
+import numpy as n
+from scipy.special import gammaln, psi
 
 import corpus
 
 n.random.seed(100000001)
 meanchangethresh = 0.001
 maxLen = 500
-clippingProportion = 0.1 #1 for non-private #JF: Improve sensitivity by clipping
-#(actually projecting) the norm of a document's sufficient statistics
-#to this fraction of maxLen.  To do no clipping, set to 1.
-#Set this to 1 when performing non-private LDA, where clipping is not required.
-print "clipping proportion %f" %(clippingProportion)
+clippingProportion = 0.1  # 1 for non-private #JF: Improve sensitivity by clipping
+# (actually projecting) the norm of a document's sufficient statistics
+# to this fraction of maxLen.  To do no clipping, set to 1.
+# Set this to 1 when performing non-private LDA, where clipping is not required.
+print("clipping proportion %f" % (clippingProportion))
 
 
 def dirichlet_expectation(alpha):
-    """
-    For a vector theta ~ Dir(alpha), computes E[log(theta)] given alpha.
-    """
-    if (len(alpha.shape) == 1):
-        return(psi(alpha) - psi(n.sum(alpha)))
-    return(psi(alpha) - psi(n.sum(alpha, 1))[:, n.newaxis])
+	"""
+	For a vector theta ~ Dir(alpha), computes E[log(theta)] given alpha.
+	"""
+	if (len(alpha.shape) == 1):
+		return (psi(alpha) - psi(n.sum(alpha)))
+	return (psi(alpha) - psi(n.sum(alpha, 1))[:, n.newaxis])
+
 
 def parse_doc_list(docs, vocab):
-    """
-    Parse a document into a list of word ids and a list of counts,
-    or parse a set of documents into two lists of lists of word ids
-    and counts.
+	"""
+	Parse a document into a list of word ids and a list of counts,
+	or parse a set of documents into two lists of lists of word ids
+	and counts.
 
-    Arguments: 
-    docs:  List of D documents. Each document must be represented as
-           a single string. (Word order is unimportant.) Any
-           words not in the vocabulary will be ignored.
-    vocab: Dictionary mapping from words to integer ids.
+	Arguments:
+	docs:  List of D documents. Each document must be represented as
+		   a single string. (Word order is unimportant.) Any
+		   words not in the vocabulary will be ignored.
+	vocab: Dictionary mapping from words to integer ids.
 
-    Returns a pair of lists of lists. 
+	Returns a pair of lists of lists.
 
-    The first, wordids, says what vocabulary tokens are present in
-    each document. wordids[i][j] gives the jth unique token present in
-    document i. (Don't count on these tokens being in any particular
-    order.)
+	The first, wordids, says what vocabulary tokens are present in
+	each document. wordids[i][j] gives the jth unique token present in
+	document i. (Don't count on these tokens being in any particular
+	order.)
 
-    The second, wordcts, says how many times each vocabulary token is
-    present. wordcts[i][j] is the number of times that the token given
-    by wordids[i][j] appears in document i.
-    """
-    if (type(docs).__name__ == 'str'):
-        temp = list()
-        temp.append(docs)
-        docs = temp
+	The second, wordcts, says how many times each vocabulary token is
+	present. wordcts[i][j] is the number of times that the token given
+	by wordids[i][j] appears in document i.
+	"""
+	if (type(docs).__name__ == 'str'):
+		temp = list()
+		temp.append(docs)
+		docs = temp
 
-    D = len(docs)
-    
-    wordids = list()
-    wordcts = list()
-    for d in range(0, D):
-        docs[d] = docs[d].lower()
-        docs[d] = re.sub(r'-', ' ', docs[d])
-        docs[d] = re.sub(r'[^a-z ]', '', docs[d])
-        docs[d] = re.sub(r' +', ' ', docs[d])
-        words = string.split(docs[d])
-        ddict = dict()
-        for word in words:
-            if (word in vocab):
-                wordtoken = vocab[word]
-                if (not wordtoken in ddict):
-                    ddict[wordtoken] = 0
-                ddict[wordtoken] += 1
-        wordids.append(ddict.keys())
-        wordcts.append(ddict.values())
+	D = len(docs)
 
-    return((wordids, wordcts))
+	wordids = list()
+	wordcts = list()
+	for d in range(0, D):
+		docs[d] = docs[d].lower()
+		docs[d] = re.sub(r'-', ' ', docs[d])
+		docs[d] = re.sub(r'[^a-z ]', '', docs[d])
+		docs[d] = re.sub(r' +', ' ', docs[d])
+		words = docs[d].split()
+		ddict = dict()
+		for word in words:
+			if (word in vocab):
+				wordtoken = vocab[word]
+				if (not wordtoken in ddict):
+					ddict[wordtoken] = 0
+				ddict[wordtoken] += 1
+		wordids.append(list(ddict.keys()))
+		wordcts.append(list(ddict.values()))
+
+	return ((wordids, wordcts))
+
 
 class OnlineLDA:
-    """
-    Implements online VB for LDA as described in (Hoffman et al. 2010).
-    """
+	"""
+	Implements online VB for LDA as described in (Hoffman et al. 2010).
+	"""
 
-    def __init__(self, vocab, K, D, alpha, eta, tau0, kappa, priv, budget, gamma_noise, mech):
-        """
-        Arguments:
-        K: Number of topics
-        vocab: A set of words to recognize. When analyzing documents, any word
-           not in this set will be ignored.
-        D: Total number of documents in the population. For a fixed corpus,
-           this is the size of the corpus. In the truly online setting, this
-           can be an estimate of the maximum number of documents that
-           could ever be seen.
-        alpha: Hyperparameter for prior on weight vectors theta
-        eta: Hyperparameter for prior on topics beta
-        tau0: A (positive) learning parameter that downweights early iterations
-        kappa: Learning rate: exponential decay rate---should be between
-             (0.5, 1.0] to guarantee asymptotic convergence.
+	def __init__(self, vocab, K, D, alpha, eta, tau0, kappa, priv, budget, gamma_noise, mech):
+		"""
+		Arguments:
+		K: Number of topics
+		vocab: A set of words to recognize. When analyzing documents, any word
+		   not in this set will be ignored.
+		D: Total number of documents in the population. For a fixed corpus,
+		   this is the size of the corpus. In the truly online setting, this
+		   can be an estimate of the maximum number of documents that
+		   could ever be seen.
+		alpha: Hyperparameter for prior on weight vectors theta
+		eta: Hyperparameter for prior on topics beta
+		tau0: A (positive) learning parameter that downweights early iterations
+		kappa: Learning rate: exponential decay rate---should be between
+			 (0.5, 1.0] to guarantee asymptotic convergence.
 
-        Note that if you pass the same set of D documents in every time and
-        set kappa=0 this class can also be used to do batch VB.
-        """
-        self._vocab = dict()
-        for word in vocab:
-            word = word.lower()
-            word = re.sub(r'[^a-z]', '', word)
-            self._vocab[word] = len(self._vocab)
+		Note that if you pass the same set of D documents in every time and
+		set kappa=0 this class can also be used to do batch VB.
+		"""
+		self._vocab = dict()
+		for word in vocab:
+			word = word.lower()
+			word = re.sub(r'[^a-z]', '', word)
+			self._vocab[word] = len(self._vocab)
 
-        self._K = K
-        self._W = len(self._vocab)
-        self._D = D
-        self._alpha = alpha
-        self._eta = eta
-        self._tau0 = tau0 + 1
-        self._kappa = kappa
-        self._updatect = 0
-        self.priv = priv
-        self.budget = budget
-        self.gamma_noise = gamma_noise
-        self.mech = mech
+		self._K = K
+		self._W = len(self._vocab)
+		self._D = D
+		self._alpha = alpha
+		self._eta = eta
+		self._tau0 = tau0 + 1
+		self._kappa = kappa
+		self._updatect = 0
+		self.priv = priv
+		self.budget = budget
+		self.gamma_noise = gamma_noise
+		self.mech = mech
 
-        # Initialize the variational distribution q(beta|lambda)
-        self._lambda = 1*n.random.gamma(100., 1./100., (self._K, self._W))
-        self._Elogbeta = dirichlet_expectation(self._lambda)
-        self._expElogbeta = n.exp(self._Elogbeta)
+		# Initialize the variational distribution q(beta|lambda)
+		self._lambda = 1 * n.random.gamma(100., 1. / 100., (self._K, self._W))
+		self._Elogbeta = dirichlet_expectation(self._lambda)
+		self._expElogbeta = n.exp(self._Elogbeta)
 
-    def do_e_step(self, wordids, wordcts):
-        batchD = len(wordids)
+	def do_e_step(self, wordids, wordcts):
+		batchD = len(wordids)
 
-        # Initialize the variational distribution q(theta|gamma) for
-        # the mini-batch
-        gamma = 1*n.random.gamma(100., 1./100., (batchD, self._K))
-        Elogtheta = dirichlet_expectation(gamma)
-        expElogtheta = n.exp(Elogtheta)
+		# Initialize the variational distribution q(theta|gamma) for
+		# the mini-batch
+		gamma = 1 * n.random.gamma(100., 1. / 100., (batchD, self._K))
+		Elogtheta = dirichlet_expectation(gamma)
+		expElogtheta = n.exp(Elogtheta)
 
-        sstats = n.zeros(self._lambda.shape)
-        # Now, for each document d update that document's gamma and phi
-        it = 0
-        meanchange = 0
-        numClipped = 0 #JF: how many documents in the minibatch were subject to clipping
-        for d in range(0, batchD):
-            # print sum(wordcts[d])
-            # These are mostly just shorthand (but might help cache locality)
-            ids = wordids[d]
-            cts = wordcts[d]
-            gammad = gamma[d, :]
-            Elogthetad = Elogtheta[d, :]
-            expElogthetad = expElogtheta[d, :]
-            expElogbetad = self._expElogbeta[:, ids]
-            # The optimal phi_{dwk} is proportional to 
-            # expElogthetad_k * expElogbetad_w. phinorm is the normalizer.
-            phinorm = n.dot(expElogthetad, expElogbetad) + 1e-100
-            # Iterate between gamma and phi until convergence
-            for it in range(0, 100):
-                lastgamma = gammad
-                # We represent phi implicitly to save memory and time.
-                # Substituting the value of the optimal phi back into
-                # the update for gamma gives this update. Cf. Lee&Seung 2001.
-                gammad = self._alpha + expElogthetad * \
-                    n.dot(cts / phinorm, expElogbetad.T)
-                # print gammad[:, n.newaxis]
-                Elogthetad = dirichlet_expectation(gammad)
-                expElogthetad = n.exp(Elogthetad)
-                phinorm = n.dot(expElogthetad, expElogbetad) + 1e-100
-                # If gamma hasn't changed much, we're done.
-                meanchange = n.mean(abs(gammad - lastgamma))
-                if (meanchange < meanchangethresh):
-                    break
-            gamma[d, :] = gammad
-            # Contribution of document d to the expected sufficient
-            # statistics for the M step.
-            # sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm)
-            
-            #sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm) #JF: commented, to add clipping code
-            if clippingProportion == 1: 
-                sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm)
-            else: #JF: implement norm clipping
-                temp = n.outer(expElogthetad.T, cts/phinorm)
-                norm = n.linalg.norm(temp * self._expElogbeta[:, ids]) #TODO: can I calculate the norm without doing this multiplication?
-                #print "SS norm: %f" %(norm) #JF: testing
-                #print "SS sum: %f" %(n.sum(temp * self._expElogbeta[:, ids] )) #JF: testing
-                clippedSensitivity = maxLen * clippingProportion #JF: per-document sensitivity, after clipping
-                if norm > clippedSensitivity:
-                    temp = temp / (norm/clippedSensitivity) #clip (really, project) sufficient statistics for the document to satisfy an L2 norm constraint
-                    #normAfterClipping = n.linalg.norm(temp * self._expElogbeta[:, ids])
-                    #print "clipping, new norm is %f" %(normAfterClipping)
-                    numClipped += 1
-                sstats[:, ids] += temp
-        
-        if clippingProportion != 1:
-            print "%d of %d documents clipped" %(numClipped, batchD)
+		sstats = n.zeros(self._lambda.shape)
+		# Now, for each document d update that document's gamma and phi
+		it = 0
+		meanchange = 0
+		numClipped = 0  # JF: how many documents in the minibatch were subject to clipping
+		for d in range(0, batchD):
+			# print sum(wordcts[d])
+			# These are mostly just shorthand (but might help cache locality)
+			ids = wordids[d]
+			cts = wordcts[d]
+			gammad = gamma[d, :]
+			Elogthetad = Elogtheta[d, :]
+			expElogthetad = expElogtheta[d, :]
+			expElogbetad = self._expElogbeta[:, ids]
+			# The optimal phi_{dwk} is proportional to
+			# expElogthetad_k * expElogbetad_w. phinorm is the normalizer.
+			phinorm = n.dot(expElogthetad, expElogbetad) + 1e-100
+			# Iterate between gamma and phi until convergence
+			for it in range(0, 100):
+				lastgamma = gammad
+				# We represent phi implicitly to save memory and time.
+				# Substituting the value of the optimal phi back into
+				# the update for gamma gives this update. Cf. Lee&Seung 2001.
+				gammad = self._alpha + expElogthetad * \
+				         n.dot(cts / phinorm, expElogbetad.T)
+				# print gammad[:, n.newaxis]
+				Elogthetad = dirichlet_expectation(gammad)
+				expElogthetad = n.exp(Elogthetad)
+				phinorm = n.dot(expElogthetad, expElogbetad) + 1e-100
+				# If gamma hasn't changed much, we're done.
+				meanchange = n.mean(abs(gammad - lastgamma))
+				if (meanchange < meanchangethresh):
+					break
+			gamma[d, :] = gammad
+			# Contribution of document d to the expected sufficient
+			# statistics for the M step.
+			# sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm)
 
-        # This step finishes computing the sufficient statistics for the
-        # M step, so that
-        # sstats[k, w] = \sum_d n_{dw} * phi_{dwk} 
-        # = \sum_d n_{dw} * exp{Elogtheta_{dk} + Elogbeta_{kw}} / phinorm_{dw}.
+			# sstats[:, ids] += n.outer(expElogthetad.T, cts/phinorm) #JF: commented, to add clipping code
+			if clippingProportion == 1:
+				sstats[:, ids] += n.outer(expElogthetad.T, cts / phinorm)
+			else:  # JF: implement norm clipping
+				temp = n.outer(expElogthetad.T, cts / phinorm)
+				norm = n.linalg.norm(temp * self._expElogbeta[:, ids])  # TODO: can I calculate the norm without
+				# doing this multiplication?
+				# print "SS norm: %f" %(norm) #JF: testing
+				# print "SS sum: %f" %(n.sum(temp * self._expElogbeta[:, ids] )) #JF: testing
+				clippedSensitivity = maxLen * clippingProportion  # JF: per-document sensitivity, after clipping
+				if norm > clippedSensitivity:
+					temp = temp / (norm / clippedSensitivity)  # clip (really, project) sufficient statistics for the
+					# document to satisfy an L2 norm constraint
+					# normAfterClipping = n.linalg.norm(temp * self._expElogbeta[:, ids])
+					# print "clipping, new norm is %f" %(normAfterClipping)
+					numClipped += 1
+				sstats[:, ids] += temp
 
-        #######################################################
-        """ this is what I need to perturb for privacy """
-        sstats = sstats * self._expElogbeta
-        #######################################################
-        # size of sstats: # topics times # of vocab
-        # this sstats is sstats[k, w] = \sum_d n_{dw} * phi_{dwk}
-        # so before noise addition, multiply 1/S.
-        # then, after noise addition, multiply S, because
-        # this is how Matt updates lambda: self._lambda = self._lambda * (1-rhot) + rhot * (self._eta + self._D * sstats / len(docs))
+		if clippingProportion != 1:
+			print("%d of %d documents clipped" % (numClipped, batchD))
 
-        # how to draw gamma random variables (numpy intro)
-        # shape, scale = 2., 2. # mean and dispersion
-        # s = np.random.gamma(shape, scale, 1000)
+		# This step finishes computing the sufficient statistics for the
+		# M step, so that
+		# sstats[k, w] = \sum_d n_{dw} * phi_{dwk}
+		# = \sum_d n_{dw} * exp{Elogtheta_{dk} + Elogbeta_{kw}} / phinorm_{dw}.
 
-        if self.priv:
-            epsilon = self.budget[0]
+		#######################################################
+		""" this is what I need to perturb for privacy """
+		sstats = sstats * self._expElogbeta
+		#######################################################
+		# size of sstats: # topics times # of vocab
+		# this sstats is sstats[k, w] = \sum_d n_{dw} * phi_{dwk}
+		# so before noise addition, multiply 1/S.
+		# then, after noise addition, multiply S, because
+		# this is how Matt updates lambda: self._lambda = self._lambda * (1-rhot) + rhot * (self._eta + self._D *
+		# sstats / len(docs))
 
-            if self.gamma_noise:
-                gam_shape = 1
-                gam_rate = self._D*epsilon/float(maxLen) # get good results if batchD >> maxLen
-                gam_scale = 1/float(gam_rate)
+		# how to draw gamma random variables (numpy intro)
+		# shape, scale = 2., 2. # mean and dispersion
+		# s = np.random.gamma(shape, scale, 1000)
 
-                noise = n.random.gamma(gam_shape, gam_scale, sstats.shape)
+		if self.priv:
+			epsilon = self.budget[0]
 
-            else:
-                if self.mech==0: # mech ==0, Gaussian
-                    delta_iter = self.budget[1]
-                    c2 = 2*n.log(1.25/delta_iter)
-                    #sensitivity = maxLen/float(self._D)
-                    sensitivity = maxLen/float(batchD)
-                    print "original sensitivity is %f" %(sensitivity)
-                    #sensitivity = 0.0013/float(batchD) #JF: TESTING!!!!!!!!!! BEST CASE
-                    #print "best case sensitivity is %f" %(sensitivity)
-                    sensitivity *= clippingProportion #JF
-                    print "clipped sensitivity is %f" %(sensitivity) #JF
-                    nsv = c2*(sensitivity**2)/(epsilon**2)
-                    noise = n.random.normal(0,n.sqrt(nsv),sstats.shape)
+			if self.gamma_noise:
+				gam_shape = 1
+				gam_rate = self._D * epsilon / float(maxLen)  # get good results if batchD >> maxLen
+				gam_scale = 1 / float(gam_rate)
 
-                else: # mech == 1, Laplace
-                    laplace_b = maxLen/float(self._D*epsilon)
-                    noise = n.random.laplace(0, laplace_b, sstats.shape)
+				noise = n.random.gamma(gam_shape, gam_scale, sstats.shape)
 
-            # maxSstat = n.max(sstats/float(batchD))
+			else:
+				if self.mech == 0:  # mech ==0, Gaussian
+					delta_iter = self.budget[1]
+					c2 = 2 * n.log(1.25 / delta_iter)
+					# sensitivity = maxLen/float(self._D)
+					sensitivity = maxLen / float(batchD)
+					print("original sensitivity is %f" % (sensitivity))
+					# sensitivity = 0.0013/float(batchD) #JF: TESTING!!!!!!!!!! BEST CASE
+					# print "best case sensitivity is %f" %(sensitivity)
+					sensitivity *= clippingProportion  # JF
+					print("clipped sensitivity is %f" % (sensitivity))  # JF
+					nsv = c2 * (sensitivity ** 2) / (epsilon ** 2)
+					noise = n.random.normal(0, n.sqrt(nsv), sstats.shape)
 
-            sstats = sstats/float(batchD) + noise
+				else:  # mech == 1, Laplace
+					laplace_b = maxLen / float(self._D * epsilon)
+					noise = n.random.laplace(0, laplace_b, sstats.shape)
 
-            """ plotting """
-            # s = sstats/float(batchD)
-            # plt.hist(n.reshape(s, n.prod(s.shape)), 100)
-            # plt.hist(n.reshape(noise, n.prod(noise.shape)), 100)
-            # plt.xlim([-0.005, 0.005])
-            # plt.show()
+			# maxSstat = n.max(sstats/float(batchD))
 
-            # count, bins, ignored = plt.hist(s, 30)
+			sstats = sstats / float(batchD) + noise
 
-            # map back to non-negative sstats
-            neg_idx = n.nonzero(sstats<0)
-            sstats[neg_idx] = 0
-            # large_idx = n.nonzero(sstats>maxSstat)
-            # sstats[large_idx] = n.max(sstats)
+			""" plotting """
+			# s = sstats/float(batchD)
+			# plt.hist(n.reshape(s, n.prod(s.shape)), 100)
+			# plt.hist(n.reshape(noise, n.prod(noise.shape)), 100)
+			# plt.xlim([-0.005, 0.005])
+			# plt.show()
 
-            sstats = float(batchD)*sstats
+			# count, bins, ignored = plt.hist(s, 30)
 
+			# map back to non-negative sstats
+			neg_idx = n.nonzero(sstats < 0)
+			sstats[neg_idx] = 0
+			# large_idx = n.nonzero(sstats>maxSstat)
+			# sstats[large_idx] = n.max(sstats)
 
-        return((gamma, sstats))
+			sstats = float(batchD) * sstats
 
-    def do_e_step_docs(self, docs):
-        """
-        Given a mini-batch of documents, estimates the parameters
-        gamma controlling the variational distribution over the topic
-        weights for each document in the mini-batch.
+		return ((gamma, sstats))
 
-        Arguments:
-        docs:  List of D documents. Each document must be represented
-               as a string. (Word order is unimportant.) Any
-               words not in the vocabulary will be ignored.
+	def do_e_step_docs(self, docs):
+		"""
+		Given a mini-batch of documents, estimates the parameters
+		gamma controlling the variational distribution over the topic
+		weights for each document in the mini-batch.
 
-        Returns a tuple containing the estimated values of gamma,
-        as well as sufficient statistics needed to update lambda.
-        """
-        # This is to handle the case where someone just hands us a single
-        # document, not in a list.
-        if (type(docs).__name__ == 'string'):
-            temp = list()
-            temp.append(docs)
-            docs = temp
+		Arguments:
+		docs:  List of D documents. Each document must be represented
+			   as a string. (Word order is unimportant.) Any
+			   words not in the vocabulary will be ignored.
 
-        (wordids, wordcts) = parse_doc_list(docs, self._vocab)
+		Returns a tuple containing the estimated values of gamma,
+		as well as sufficient statistics needed to update lambda.
+		"""
+		# This is to handle the case where someone just hands us a single
+		# document, not in a list.
+		if (type(docs).__name__ == 'string'):
+			temp = list()
+			temp.append(docs)
+			docs = temp
 
-        return self.do_e_step(wordids, wordcts)
+		(wordids, wordcts) = parse_doc_list(docs, self._vocab)
 
+		return self.do_e_step(wordids, wordcts)
 
-    def update_lambda_docs(self, docs):
-        """
-        First does an E step on the mini-batch given in wordids and
-        wordcts, then uses the result of that E step to update the
-        variational parameter matrix lambda.
+	def update_lambda_docs(self, docs):
+		"""
+		First does an E step on the mini-batch given in wordids and
+		wordcts, then uses the result of that E step to update the
+		variational parameter matrix lambda.
 
-        Arguments:
-        docs:  List of D documents. Each document must be represented
-               as a string. (Word order is unimportant.) Any
-               words not in the vocabulary will be ignored.
+		Arguments:
+		docs:  List of D documents. Each document must be represented
+			   as a string. (Word order is unimportant.) Any
+			   words not in the vocabulary will be ignored.
 
-        Returns gamma, the parameters to the variational distribution
-        over the topic weights theta for the documents analyzed in this
-        update.
+		Returns gamma, the parameters to the variational distribution
+		over the topic weights theta for the documents analyzed in this
+		update.
 
-        Also returns an estimate of the variational bound for the
-        entire corpus for the OLD setting of lambda based on the
-        documents passed in. This can be used as a (possibly very
-        noisy) estimate of held-out likelihood.
-        """
+		Also returns an estimate of the variational bound for the
+		entire corpus for the OLD setting of lambda based on the
+		documents passed in. This can be used as a (possibly very
+		noisy) estimate of held-out likelihood.
+		"""
 
-        # rhot will be between 0 and 1, and says how much to weight
-        # the information we got from this mini-batch.
-        rhot = pow(self._tau0 + self._updatect, -self._kappa)
-        self._rhot = rhot
-        # Do an E step to update gamma, phi | lambda for this
-        # mini-batch. This also returns the information about phi that
-        # we need to update lambda.
-        (gamma, sstats) = self.do_e_step_docs(docs)
-        # Estimate held-out likelihood for current values of lambda.
-        bound = self.approx_bound_docs(docs, gamma)
-        # Update lambda based on documents.
-        self._lambda = self._lambda * (1-rhot) + \
-            rhot * (self._eta + self._D * sstats / len(docs))
-        self._Elogbeta = dirichlet_expectation(self._lambda)
-        self._expElogbeta = n.exp(self._Elogbeta)
-        self._updatect += 1
+		# rhot will be between 0 and 1, and says how much to weight
+		# the information we got from this mini-batch.
+		rhot = pow(self._tau0 + self._updatect, -self._kappa)
+		self._rhot = rhot
+		# Do an E step to update gamma, phi | lambda for this
+		# mini-batch. This also returns the information about phi that
+		# we need to update lambda.
+		(gamma, sstats) = self.do_e_step_docs(docs)
+		# Estimate held-out likelihood for current values of lambda.
+		bound = self.approx_bound_docs(docs, gamma)
+		# Update lambda based on documents.
+		self._lambda = self._lambda * (1 - rhot) + \
+		               rhot * (self._eta + self._D * sstats / len(docs))
+		self._Elogbeta = dirichlet_expectation(self._lambda)
+		self._expElogbeta = n.exp(self._Elogbeta)
+		self._updatect += 1
 
-        return(gamma, bound)
+		return (gamma, bound)
 
-    def update_lambda(self, wordids, wordcts):
-        """
-        First does an E step on the mini-batch given in wordids and
-        wordcts, then uses the result of that E step to update the
-        variational parameter matrix lambda.
+	def update_lambda(self, wordids, wordcts):
+		"""
+		First does an E step on the mini-batch given in wordids and
+		wordcts, then uses the result of that E step to update the
+		variational parameter matrix lambda.
 
-        Arguments:
-        docs:  List of D documents. Each document must be represented
-               as a string. (Word order is unimportant.) Any
-               words not in the vocabulary will be ignored.
+		Arguments:
+		docs:  List of D documents. Each document must be represented
+			   as a string. (Word order is unimportant.) Any
+			   words not in the vocabulary will be ignored.
 
-        Returns gamma, the parameters to the variational distribution
-        over the topic weights theta for the documents analyzed in this
-        update.
+		Returns gamma, the parameters to the variational distribution
+		over the topic weights theta for the documents analyzed in this
+		update.
 
-        Also returns an estimate of the variational bound for the
-        entire corpus for the OLD setting of lambda based on the
-        documents passed in. This can be used as a (possibly very
-        noisy) estimate of held-out likelihood.
-        """
+		Also returns an estimate of the variational bound for the
+		entire corpus for the OLD setting of lambda based on the
+		documents passed in. This can be used as a (possibly very
+		noisy) estimate of held-out likelihood.
+		"""
 
-        # rhot will be between 0 and 1, and says how much to weight
-        # the information we got from this mini-batch.
-        rhot = pow(self._tau0 + self._updatect, -self._kappa)
-        self._rhot = rhot
-        # Do an E step to update gamma, phi | lambda for this
-        # mini-batch. This also returns the information about phi that
-        # we need to update lambda.
-        (gamma, sstats) = self.do_e_step(wordids, wordcts)
-        # Estimate held-out likelihood for current values of lambda.
-        bound = self.approx_bound(wordids, wordcts, gamma)
-        # Update lambda based on documents.
-        self._lambda = self._lambda * (1-rhot) + \
-            rhot * (self._eta + self._D * sstats / len(wordids))
-        self._Elogbeta = dirichlet_expectation(self._lambda)
-        self._expElogbeta = n.exp(self._Elogbeta)
-        self._updatect += 1
+		# rhot will be between 0 and 1, and says how much to weight
+		# the information we got from this mini-batch.
+		rhot = pow(self._tau0 + self._updatect, -self._kappa)
+		self._rhot = rhot
+		# Do an E step to update gamma, phi | lambda for this
+		# mini-batch. This also returns the information about phi that
+		# we need to update lambda.
+		(gamma, sstats) = self.do_e_step(wordids, wordcts)
+		# Estimate held-out likelihood for current values of lambda.
+		bound = self.approx_bound(wordids, wordcts, gamma)
+		# Update lambda based on documents.
+		self._lambda = self._lambda * (1 - rhot) + \
+		               rhot * (self._eta + self._D * sstats / len(wordids))
+		self._Elogbeta = dirichlet_expectation(self._lambda)
+		self._expElogbeta = n.exp(self._Elogbeta)
+		self._updatect += 1
 
-        return(gamma, bound)
+		return (gamma, bound)
 
-    def approx_bound(self, wordids, wordcts, gamma):
-        """
-        Estimates the variational bound over *all documents* using only
-        the documents passed in as "docs." gamma is the set of parameters
-        to the variational distribution q(theta) corresponding to the
-        set of documents passed in.
+	def approx_bound(self, wordids, wordcts, gamma):
+		"""
+		Estimates the variational bound over *all documents* using only
+		the documents passed in as "docs." gamma is the set of parameters
+		to the variational distribution q(theta) corresponding to the
+		set of documents passed in.
 
-        The output of this function is going to be noisy, but can be
-        useful for assessing convergence.
-        """
+		The output of this function is going to be noisy, but can be
+		useful for assessing convergence.
+		"""
 
-        # This is to handle the case where someone just hands us a single
-        # document, not in a list.
-        batchD = len(wordids)
+		# This is to handle the case where someone just hands us a single
+		# document, not in a list.
+		batchD = len(wordids)
 
-        score = 0
-        Elogtheta = dirichlet_expectation(gamma)
-        expElogtheta = n.exp(Elogtheta)
+		score = 0
+		Elogtheta = dirichlet_expectation(gamma)
+		expElogtheta = n.exp(Elogtheta)
 
-        # E[log p(docs | theta, beta)]
-        for d in range(0, batchD):
-            gammad = gamma[d, :]
-            ids = wordids[d]
-            cts = n.array(wordcts[d])
-            phinorm = n.zeros(len(ids))
-            for i in range(0, len(ids)):
-                temp = Elogtheta[d, :] + self._Elogbeta[:, ids[i]]
-                tmax = max(temp)
-                phinorm[i] = n.log(sum(n.exp(temp - tmax))) + tmax
-            score += n.sum(cts * phinorm)
-#             oldphinorm = phinorm
-#             phinorm = n.dot(expElogtheta[d, :], self._expElogbeta[:, ids])
-#             print oldphinorm
-#             print n.log(phinorm)
-#             score += n.sum(cts * n.log(phinorm))
+		# E[log p(docs | theta, beta)]
+		for d in range(0, batchD):
+			gammad = gamma[d, :]
+			ids = wordids[d]
+			cts = n.array(wordcts[d])
+			phinorm = n.zeros(len(ids))
+			for i in range(0, len(ids)):
+				temp = Elogtheta[d, :] + self._Elogbeta[:, ids[i]]
+				tmax = max(temp)
+				phinorm[i] = n.log(sum(n.exp(temp - tmax))) + tmax
+			score += n.sum(cts * phinorm)
+		#             oldphinorm = phinorm
+		#             phinorm = n.dot(expElogtheta[d, :], self._expElogbeta[:, ids])
+		#             print oldphinorm
+		#             print n.log(phinorm)
+		#             score += n.sum(cts * n.log(phinorm))
 
-        # E[log p(theta | alpha) - log q(theta | gamma)]
-        score += n.sum((self._alpha - gamma)*Elogtheta)
-        score += n.sum(gammaln(gamma) - gammaln(self._alpha))
-        score += sum(gammaln(self._alpha*self._K) - gammaln(n.sum(gamma, 1)))
+		# E[log p(theta | alpha) - log q(theta | gamma)]
+		score += n.sum((self._alpha - gamma) * Elogtheta)
+		score += n.sum(gammaln(gamma) - gammaln(self._alpha))
+		score += sum(gammaln(self._alpha * self._K) - gammaln(n.sum(gamma, 1)))
 
-        # Compensate for the subsampling of the population of documents
-        score = score * self._D / len(wordids)
+		# Compensate for the subsampling of the population of documents
+		score = score * self._D / len(wordids)
 
-        # E[log p(beta | eta) - log q (beta | lambda)]
-        score = score + n.sum((self._eta-self._lambda)*self._Elogbeta)
-        score = score + n.sum(gammaln(self._lambda) - gammaln(self._eta))
-        score = score + n.sum(gammaln(self._eta*self._W) - 
-                              gammaln(n.sum(self._lambda, 1)))
+		# E[log p(beta | eta) - log q (beta | lambda)]
+		score = score + n.sum((self._eta - self._lambda) * self._Elogbeta)
+		score = score + n.sum(gammaln(self._lambda) - gammaln(self._eta))
+		score = score + n.sum(gammaln(self._eta * self._W) -
+		                      gammaln(n.sum(self._lambda, 1)))
 
-        return(score)
+		return (score)
 
-    def approx_bound_docs(self, docs, gamma):
-        """
-        Estimates the variational bound over *all documents* using only
-        the documents passed in as "docs." gamma is the set of parameters
-        to the variational distribution q(theta) corresponding to the
-        set of documents passed in.
+	def approx_bound_docs(self, docs, gamma):
+		"""
+		Estimates the variational bound over *all documents* using only
+		the documents passed in as "docs." gamma is the set of parameters
+		to the variational distribution q(theta) corresponding to the
+		set of documents passed in.
 
-        The output of this function is going to be noisy, but can be
-        useful for assessing convergence.
-        """
+		The output of this function is going to be noisy, but can be
+		useful for assessing convergence.
+		"""
 
-        # This is to handle the case where someone just hands us a single
-        # document, not in a list.
-        if (type(docs).__name__ == 'string'):
-            temp = list()
-            temp.append(docs)
-            docs = temp
+		# This is to handle the case where someone just hands us a single
+		# document, not in a list.
+		if (type(docs).__name__ == 'string'):
+			temp = list()
+			temp.append(docs)
+			docs = temp
 
-        (wordids, wordcts) = parse_doc_list(docs, self._vocab)
-        batchD = len(docs)
+		(wordids, wordcts) = parse_doc_list(docs, self._vocab)
+		batchD = len(docs)
 
-        score = 0
-        Elogtheta = dirichlet_expectation(gamma)
-        expElogtheta = n.exp(Elogtheta)
+		score = 0
+		Elogtheta = dirichlet_expectation(gamma)
+		expElogtheta = n.exp(Elogtheta)
 
-        # E[log p(docs | theta, beta)]
-        for d in range(0, batchD):
-            gammad = gamma[d, :]
-            ids = wordids[d]
-            cts = n.array(wordcts[d])
-            phinorm = n.zeros(len(ids))
-            for i in range(0, len(ids)):
-                temp = Elogtheta[d, :] + self._Elogbeta[:, ids[i]]
-                tmax = max(temp)
-                phinorm[i] = n.log(sum(n.exp(temp - tmax))) + tmax
-            score += n.sum(cts * phinorm)
-#             oldphinorm = phinorm
-#             phinorm = n.dot(expElogtheta[d, :], self._expElogbeta[:, ids])
-#             print oldphinorm
-#             print n.log(phinorm)
-#             score += n.sum(cts * n.log(phinorm))
+		# E[log p(docs | theta, beta)]
+		for d in range(0, batchD):
+			gammad = gamma[d, :]
+			ids = wordids[d]
+			cts = n.array(wordcts[d])
+			phinorm = n.zeros(len(ids))
+			for i in range(0, len(ids)):
+				temp = Elogtheta[d, :] + self._Elogbeta[:, ids[i]]
+				tmax = max(temp)
+				phinorm[i] = n.log(sum(n.exp(temp - tmax))) + tmax
+			score += n.sum(cts * phinorm)
+		#             oldphinorm = phinorm
+		#             phinorm = n.dot(expElogtheta[d, :], self._expElogbeta[:, ids])
+		#             print oldphinorm
+		#             print n.log(phinorm)
+		#             score += n.sum(cts * n.log(phinorm))
 
-        # E[log p(theta | alpha) - log q(theta | gamma)]
-        score += n.sum((self._alpha - gamma)*Elogtheta)
-        score += n.sum(gammaln(gamma) - gammaln(self._alpha))
-        score += sum(gammaln(self._alpha*self._K) - gammaln(n.sum(gamma, 1)))
+		# E[log p(theta | alpha) - log q(theta | gamma)]
+		score += n.sum((self._alpha - gamma) * Elogtheta)
+		score += n.sum(gammaln(gamma) - gammaln(self._alpha))
+		score += sum(gammaln(self._alpha * self._K) - gammaln(n.sum(gamma, 1)))
 
-        # Compensate for the subsampling of the population of documents
-        score = score * self._D / len(docs)
+		# Compensate for the subsampling of the population of documents
+		score = score * self._D / len(docs)
 
-        # E[log p(beta | eta) - log q (beta | lambda)]
-        score = score + n.sum((self._eta-self._lambda)*self._Elogbeta)
-        score = score + n.sum(gammaln(self._lambda) - gammaln(self._eta))
-        score = score + n.sum(gammaln(self._eta*self._W) - 
-                              gammaln(n.sum(self._lambda, 1)))
+		# E[log p(beta | eta) - log q (beta | lambda)]
+		score = score + n.sum((self._eta - self._lambda) * self._Elogbeta)
+		score = score + n.sum(gammaln(self._lambda) - gammaln(self._eta))
+		score = score + n.sum(gammaln(self._eta * self._W) -
+		                      gammaln(n.sum(self._lambda, 1)))
 
-        return(score)
+		return (score)
+
 
 def main():
-    infile = sys.argv[1]
-    K = int(sys.argv[2])
-    alpha = float(sys.argv[3])
-    eta = float(sys.argv[4])
-    kappa = float(sys.argv[5])
-    S = int(sys.argv[6])
+	infile = sys.argv[1]
+	K = int(sys.argv[2])
+	alpha = float(sys.argv[3])
+	eta = float(sys.argv[4])
+	kappa = float(sys.argv[5])
+	S = int(sys.argv[6])
 
-    docs = corpus.corpus()
-    docs.read_data(infile)
+	docs = corpus.corpus()
+	docs.read_data(infile)
 
-    vocab = open(sys.argv[7]).readlines()
-    model = OnlineLDA(vocab, K, 100000,
-                      0.1, 0.01, 1, 0.75)
-    for i in range(1000):
-        # print i
-        wordids = [d.words for d in docs.docs[(i*S):((i+1)*S)]]
-        wordcts = [d.counts for d in docs.docs[(i*S):((i+1)*S)]]
-        model.update_lambda(wordids, wordcts)
-        n.savetxt('/tmp/lambda%d' % i, model._lambda.T)
-    
+	vocab = open(sys.argv[7]).readlines()
+	model = OnlineLDA(vocab, K, 100000,
+	                  0.1, 0.01, 1, 0.75)
+	for i in range(1000):
+		# print i
+		wordids = [d.words for d in docs.docs[(i * S):((i + 1) * S)]]
+		wordcts = [d.counts for d in docs.docs[(i * S):((i + 1) * S)]]
+		model.update_lambda(wordids, wordcts)
+		n.savetxt('/tmp/lambda%d' % i, model._lambda.T)
+
+
 #     infile = open(infile)
 #     corpus.read_stream_data(infile, 100000)
 
 if __name__ == '__main__':
-    main()
+	main()
