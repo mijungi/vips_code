@@ -63,6 +63,7 @@ def VBEstep_private(eps_i, del_i, X, y, exp_nat_params, totN):
         sensitivity = 1/np.float(totN)
         c2 = 2*np.log(1.25/del_i)
         nsv = c2*(sensitivity**2)/(eps_i**2)
+        nsv = np.sqrt(nsv)
         noise = np.random.normal(0,nsv,exp_suff_stats1.shape)
 
     exp_suff_stats1_tile = noise + exp_suff_stats1
@@ -81,6 +82,7 @@ def VBEstep_private(eps_i, del_i, X, y, exp_nat_params, totN):
         nse = 0
     else:
         nsv = c2*((sensitivity/2)**2)/(eps_i**2)
+        nsv = np.sqrt(nsv)
         nse_mat = np.random.normal(0,nsv, exp_suff_stats2.shape)
         upper_nse_mat = np.triu(nse_mat, 0)
 
